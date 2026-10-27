@@ -1,0 +1,498 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>AI Blog Generator</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #f4f6f8;
+            color: #222;
+        }
+
+        .container {
+            width: 90%;
+            max-width: 1000px;
+            margin: 40px auto;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+        }
+
+        .card {
+            background: white;
+            padding: 25px;
+            margin-bottom: 25px;
+            border-radius: 12px;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+        }
+
+        label {
+            display: block;
+            font-weight: bold;
+            margin-top: 15px;
+            margin-bottom: 6px;
+        }
+
+        input,
+        select,
+        textarea {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font-size: 15px;
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        button {
+            margin-top: 20px;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 6px;
+            background: #007bff;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #0056b3;
+        }
+
+        .button-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .button-group button {
+            margin-top: 10px;
+        }
+
+        #loading {
+            display: none;
+            margin-top: 15px;
+            color: #007bff;
+            font-weight: bold;
+        }
+
+        #blogOutput,
+        #resultOutput {
+            white-space: pre-wrap;
+            line-height: 1.7;
+            background: #fafafa;
+            border: 1px solid #ddd;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .error {
+            color: red;
+            font-weight: bold;
+        }
+
+        footer {
+            text-align: center;
+            color: #777;
+            margin-top: 30px;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <h1>🤖 AI Blog Generator</h1>
+
+    <p class="subtitle">
+        Generate blogs, titles, keywords, summaries and meta descriptions using Ollama.
+    </p>
+
+    <!-- Blog Generator -->
+    <div class="card">
+
+        <h2>Generate Blog</h2>
+
+        <label for="topic">Blog Topic</label>
+        <input
+            type="text"
+            id="topic"
+            placeholder="Enter your blog topic"
+        >
+
+        <label for="style">Writing Style</label>
+        <select id="style">
+            <option value="Informative">Informative</option>
+            <option value="Professional">Professional</option>
+            <option value="Creative">Creative</option>
+            <option value="Technical">Technical</option>
+            <option value="Casual">Casual</option>
+        </select>
+
+        <label for="tone">Tone</label>
+        <select id="tone">
+            <option value="Friendly">Friendly</option>
+            <option value="Professional">Professional</option>
+            <option value="Formal">Formal</option>
+            <option value="Conversational">Conversational</option>
+            <option value="Engaging">Engaging</option>
+        </select>
+
+        <label for="word_count">Word Count</label>
+        <input
+            type="number"
+            id="word_count"
+            value="500"
+            min="100"
+            max="5000"
+        >
+
+        <button onclick="generateBlog()">
+            ✨ Generate Blog
+        </button>
+
+        <div id="loading">
+            ⏳ Generating blog... Please wait.
+        </div>
+
+        <div id="blogOutput"></div>
+
+    </div>
+
+
+    <!-- Additional Tools -->
+    <div class="card">
+
+        <h2>Blog Tools</h2>
+
+        <div class="button-group">
+
+            <button onclick="generateTitles()">
+                📝 Generate Titles
+            </button>
+
+            <button onclick="generateKeywords()">
+                🔑 Generate Keywords
+            </button>
+
+            <button onclick="generateSummary()">
+                📋 Generate Summary
+            </button>
+
+            <button onclick="generateMeta()">
+                🔍 Generate Meta Description
+            </button>
+
+        </div>
+
+        <div id="resultOutput"></div>
+
+    </div>
+
+
+    <!-- Intent Detection -->
+    <div class="card">
+
+        <h2>Intent Detection</h2>
+
+        <label for="userText">
+            Enter User Request
+        </label>
+
+        <textarea
+            id="userText"
+            placeholder="Example: Write a blog about artificial intelligence"
+        ></textarea>
+
+        <button onclick="detectIntent()">
+            🎯 Detect Intent
+        </button>
+
+        <div id="intentOutput"></div>
+
+    </div>
+
+
+    <footer>
+        AI Blog Generator | Flask + Ollama
+    </footer>
+
+</div>
+
+
+<script>
+
+    let generatedBlog = "";
+
+
+    // Generate Blog
+    async function generateBlog() {
+
+        const topic = document.getElementById("topic").value;
+        const style = document.getElementById("style").value;
+        const tone = document.getElementById("tone").value;
+        const word_count = document.getElementById("word_count").value;
+
+        if (!topic.trim()) {
+            alert("Please enter a blog topic.");
+            return;
+        }
+
+        document.getElementById("loading").style.display = "block";
+        document.getElementById("blogOutput").innerText = "";
+
+        try {
+
+            const response = await fetch("/generate_blog", {
+
+                method: "POST",
+
+                headers: {
+                    "Content-Type": "application/json"
+                },
+
+                body: JSON.stringify({
+                    topic: topic,
+                    style: style,
+                    tone: tone,
+                    word_count: word_count
+                })
+
+            });
+
+            const data = await response.json();
+
+            generatedBlog = data.blog;
+
+            document.getElementById("blogOutput").innerText =
+                generatedBlog;
+
+        }
+
+        catch (error) {
+
+            document.getElementById("blogOutput").innerHTML =
+                "<p class='error'>Error generating blog: " +
+                error +
+                "</p>";
+
+        }
+
+        finally {
+
+            document.getElementById("loading").style.display = "none";
+
+        }
+
+    }
+
+
+    // Generate Titles
+    async function generateTitles() {
+
+        if (!generatedBlog) {
+
+            const topic = document.getElementById("topic").value;
+
+            if (!topic.trim()) {
+                alert("Please enter a topic first.");
+                return;
+            }
+
+            await sendRequest(
+                "/generate_titles",
+                { topic: topic }
+            );
+
+        } else {
+
+            const topic = document.getElementById("topic").value;
+
+            await sendRequest(
+                "/generate_titles",
+                { topic: topic }
+            );
+
+        }
+
+    }
+
+
+    // Generate Keywords
+    async function generateKeywords() {
+
+        if (!generatedBlog) {
+            alert("Please generate a blog first.");
+            return;
+        }
+
+        await sendRequest(
+            "/generate_keywords",
+            { blog: generatedBlog }
+        );
+
+    }
+
+
+    // Generate Summary
+    async function generateSummary() {
+
+        if (!generatedBlog) {
+            alert("Please generate a blog first.");
+            return;
+        }
+
+        await sendRequest(
+            "/generate_summary",
+            { blog: generatedBlog }
+        );
+
+    }
+
+
+    // Generate Meta Description
+    async function generateMeta() {
+
+        if (!generatedBlog) {
+            alert("Please generate a blog first.");
+            return;
+        }
+
+        await sendRequest(
+            "/generate_meta",
+            { blog: generatedBlog }
+        );
+
+    }
+
+
+    // Common request function
+    async function sendRequest(url, body) {
+
+        const output =
+            document.getElementById("resultOutput");
+
+        output.innerText = "⏳ Processing...";
+
+        try {
+
+            const response = await fetch(url, {
+
+                method: "POST",
+
+                headers: {
+                    "Content-Type": "application/json"
+                },
+
+                body: JSON.stringify(body)
+
+            });
+
+            const data = await response.json();
+
+            output.innerText =
+                data.result || "No result returned.";
+
+        }
+
+        catch (error) {
+
+            output.innerHTML =
+                "<p class='error'>Error: " +
+                error +
+                "</p>";
+
+        }
+
+    }
+
+
+    // Intent Detection
+    async function detectIntent() {
+
+        const text =
+            document.getElementById("userText").value;
+
+        if (!text.trim()) {
+            alert("Please enter a user request.");
+            return;
+        }
+
+        const output =
+            document.getElementById("intentOutput");
+
+        output.innerText =
+            "⏳ Detecting intent...";
+
+        try {
+
+            const response = await fetch(
+                "/detect_intent",
+                {
+
+                    method: "POST",
+
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+
+                    body: JSON.stringify({
+                        text: text
+                    })
+
+                }
+            );
+
+            const data = await response.json();
+
+            output.innerHTML =
+                "<h3>Detected Intent: " +
+                data.intent +
+                "</h3>";
+
+        }
+
+        catch (error) {
+
+            output.innerHTML =
+                "<p class='error'>Error: " +
+                error +
+                "</p>";
+
+        }
+
+    }
+
+</script>
+
+</body>
+</html>
